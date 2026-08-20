@@ -3,7 +3,7 @@
 ### 🎓 Thông Tin Học Viên
 - **Họ và tên:** Nguyễn Đăng Nam
 - **Mã học viên:** 2A202601307
-- **Khóa học:** VinUni AI20k - Khóa 3 Track 3 (Multi-Agent Systems)
+- **Khóa học:** VinUni AI20k - Khóa 3 Track 3
 
 ---
 
