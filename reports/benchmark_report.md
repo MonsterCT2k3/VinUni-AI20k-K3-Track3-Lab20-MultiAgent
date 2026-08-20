@@ -11,8 +11,8 @@
 
 | Mô Hình (Run) | Latency (s) | Chi Phí (USD) | Quality | Citation Cov. | Lỗi | Ghi Chú |
 |---|---:|---:|---:|---:|---:|---|
-| **Single-Agent Baseline** | 9.50s | $0.000593 | 9.5/10 | 100% | 0% | Sources: 5 | Iterations: 0 |
-| **Multi-Agent System** | 38.52s | $0.002258 | 10.0/10 | 100% | 0% | Sources: 5 | Iterations: 4 |
+| **Single-Agent Baseline** | 13.38s | $0.000637 | 9.5/10 | 100% | 0% | Sources: 5 | Iterations: 0 |
+| **Multi-Agent System** | 44.79s | $0.002111 | 10.0/10 | 100% | 0% | Sources: 5 | Iterations: 4 |
 
 ---
 
