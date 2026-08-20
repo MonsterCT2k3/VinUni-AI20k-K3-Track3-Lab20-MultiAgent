@@ -1,58 +1,72 @@
-"""Critic agent implementation for fact-checking and hallucination review."""
+"""Critic agent: kiểm định xác định (deterministic) chất lượng bài viết cuối."""
 
 import logging
+import re
 
 from multi_agent_research_lab.agents.base import BaseAgent
 from multi_agent_research_lab.core.schemas import AgentName, AgentResult
 from multi_agent_research_lab.core.state import ResearchState
-from multi_agent_research_lab.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
+CITATION_PATTERN = re.compile(r"\[(?:Source\s*|Nguồn\s*)?(\d+)\]", re.IGNORECASE)
+
+MIN_ANSWER_WORDS = 50
+
 
 class CriticAgent(BaseAgent):
-    """Optional fact-checking and safety/citation review agent."""
+    """Validator xác định cho `final_answer` — **không gọi LLM**.
+
+    Cố ý không dùng LLM: mọi thứ agent này kiểm tra (chỉ số trích dẫn nằm ngoài danh mục
+    nguồn, bài viết rỗng/quá ngắn) đều là kiểm tra xác định. Dùng regex vừa miễn phí, vừa
+    chạy trong mili-giây, và **đáng tin hơn** một LLM tự chấm điểm chính mình.
+
+    Phát hiện được ghi vào `state.errors` nên chúng tự động phản ánh vào `failure_rate` và
+    điểm phạt trong `compute_quality_score`.
+    """
 
     name = "critic"
 
-    def __init__(self, llm_client: LLMClient | None = None) -> None:
-        self.llm_client = llm_client or LLMClient()
-
     def run(self, state: ResearchState) -> ResearchState:
-        """Validate final answer, check citation fidelity, and append evaluation notes."""
-        if not state.final_answer:
-            return state
+        """Kiểm tra tính toàn vẹn của `final_answer` và ghi nhận các phát hiện."""
+        findings: list[str] = []
+        answer = state.final_answer or ""
 
-        query = state.request.query
-        logger.info("CriticAgent đang thẩm định bài viết cuối cùng cho query: '%s'...", query)
+        # 1. Bài viết phải tồn tại và đủ dài để coi là một câu trả lời thực chất.
+        if not answer.strip():
+            findings.append("final_answer rỗng")
+        elif len(answer.split()) < MIN_ANSWER_WORDS:
+            findings.append(f"final_answer quá ngắn (<{MIN_ANSWER_WORDS} từ)")
 
-        system_prompt = (
-            "Bạn là một Critic Agent chuyên trách thẩm định chất lượng khoa học và tính xác thực.\n"
-            "Nhiệm vụ: Đánh giá bài báo cáo cuối cùng đối chiếu với tài liệu nguồn:\n"
-            "1. Kiểm tra xem có ảo tưởng thông tin (Hallucination) không.\n"
-            "2. Kiểm tra độ chuẩn xác của các trích dẫn [1], [2]...\n"
-            "3. Chấm điểm độ tin cậy từ 1 đến 10 và nhận xét ngắn gọn."
-        )
-        user_prompt = (
-            f"Câu hỏi: {query}\n\n"
-            f"Bài báo cáo:\n{state.final_answer}\n\n"
-            f"Số lượng nguồn tham khảo: {len(state.sources)}\n\n"
-            "Hãy đưa ra đánh giá thẩm định:"
-        )
+        # 2. Chống trích dẫn ảo: mọi [n] phải nằm trong danh mục nguồn đã thu thập.
+        cited = {int(m) for m in CITATION_PATTERN.findall(answer)}
+        max_index = len(state.sources)
+        out_of_range = sorted(i for i in cited if i < 1 or i > max_index)
+        if out_of_range:
+            findings.append(f"trích dẫn ngoài dải nguồn (chỉ có {max_index} nguồn): {out_of_range}")
+        if state.sources and not cited:
+            findings.append("có nguồn tham khảo nhưng bài viết không trích dẫn nguồn nào")
 
-        resp = self.llm_client.complete(system_prompt, user_prompt)
+        valid_cited = cited - set(out_of_range)
+        coverage = len(valid_cited) / max_index if max_index else 0.0
 
         result_meta = {
-            "input_tokens": resp.input_tokens,
-            "output_tokens": resp.output_tokens,
-            "cost_usd": resp.cost_usd,
+            "findings": findings,
+            "cited_indices": sorted(valid_cited),
+            "citation_coverage": round(coverage, 3),
+            "cost_usd": 0.0,  # validator xác định, không tốn token
         }
         state.agent_results.append(
             AgentResult(
                 agent=AgentName.CRITIC,
-                content=resp.content,
+                content="; ".join(findings) if findings else "Không phát hiện vấn đề.",
                 metadata=result_meta,
             )
         )
         state.add_trace_event("critic_completed", result_meta)
+
+        if findings:
+            logger.warning("CriticAgent phát hiện %d vấn đề: %s", len(findings), findings)
+            state.errors.extend(f"critic: {f}" for f in findings)
+
         return state

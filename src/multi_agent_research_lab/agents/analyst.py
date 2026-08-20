@@ -47,7 +47,18 @@ class AnalystAgent(BaseAgent):
         )
 
         # 2. Gọi LLM sinh bản phân tích
-        resp = self.llm_client.complete(system_prompt, user_prompt)
+        try:
+            resp = self.llm_client.complete(system_prompt, user_prompt)
+        except Exception as exc:
+            # Fallback: chuyển thẳng research_notes xuống Writer thay vì làm sập workflow.
+            logger.error("AnalystAgent: gọi LLM thất bại: %s", exc)
+            state.errors.append(f"analyst.llm: {exc}")
+            state.analysis_notes = (
+                "Không phân tích được bằng LLM. Chuyển tiếp research notes thô:\n\n"
+                f"{research_notes}"
+            )
+            return state
+
         state.analysis_notes = resp.content
 
         # 3. Ghi nhận AgentResult và Trace Event

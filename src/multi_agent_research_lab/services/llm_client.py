@@ -121,9 +121,7 @@ class LLMClient:
             content = response.choices[0].message.content or ""
             input_tokens = response.usage.prompt_tokens if response.usage else 0
             output_tokens = response.usage.completion_tokens if response.usage else 0
-            cost_usd = self._estimate_cost(
-                self.settings.openai_model, input_tokens, output_tokens
-            )
+            cost_usd = self._estimate_cost(self.settings.openai_model, input_tokens, output_tokens)
 
             return LLMResponse(
                 content=content,

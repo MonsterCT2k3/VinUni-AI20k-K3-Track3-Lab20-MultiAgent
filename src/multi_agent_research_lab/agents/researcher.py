@@ -32,7 +32,13 @@ class ResearcherAgent(BaseAgent):
         logger.info("ResearcherAgent đang tìm kiếm tài liệu cho query: '%s'...", query)
 
         # 1. Thu thập tài liệu nguồn
-        sources = self.search_client.search(query=query, max_results=max_sources)
+        try:
+            sources = self.search_client.search(query=query, max_results=max_sources)
+        except Exception as exc:
+            # Search hỏng không được làm sập cả workflow: ghi lỗi rồi chạy tiếp với 0 nguồn.
+            logger.error("ResearcherAgent: search thất bại: %s", exc)
+            state.errors.append(f"researcher.search: {exc}")
+            sources = []
         state.sources = sources
 
         # 2. Xây dựng nội dung tài liệu để tóm tắt
@@ -63,7 +69,19 @@ class ResearcherAgent(BaseAgent):
             "Hãy tổng hợp Research Notes:"
         )
 
-        resp = self.llm_client.complete(system_prompt, user_prompt)
+        try:
+            resp = self.llm_client.complete(system_prompt, user_prompt)
+        except Exception as exc:
+            # Fallback: ghép thẳng trích đoạn nguồn thành notes thô để Analyst vẫn có đầu vào.
+            logger.error("ResearcherAgent: gọi LLM thất bại: %s", exc)
+            state.errors.append(f"researcher.llm: {exc}")
+            state.research_notes = (
+                "Không tóm tắt được bằng LLM. Trích đoạn nguồn thô:\n\n" + sources_text
+                if sources
+                else "Không thu thập được tài liệu nguồn nào."
+            )
+            return state
+
         state.research_notes = resp.content
 
         # 4. Ghi nhận AgentResult và Trace Event

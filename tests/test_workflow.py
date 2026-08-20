@@ -58,4 +58,6 @@ def test_workflow_runs_end_to_end_with_dummy_agents() -> None:
     assert "researcher" in final_state.route_history
     assert "analyst" in final_state.route_history
     assert "writer" in final_state.route_history
-    assert "done" in final_state.route_history
+    # Writer chảy thẳng qua Critic rồi tới END, nên không cần thêm một vòng Supervisor "done".
+    assert final_state.route_history == ["researcher", "analyst", "writer"]
+    assert [r.agent.value for r in final_state.agent_results][-1] == "critic"

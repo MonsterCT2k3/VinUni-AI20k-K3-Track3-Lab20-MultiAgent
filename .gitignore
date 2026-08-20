@@ -14,3 +14,6 @@ reports/*.md
 !.gitkeep
 docs-for-dev/
 *.zip
+
+# Trace output (giữ lại thư mục, bỏ qua file trace sinh ra)
+reports/traces/

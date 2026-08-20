@@ -27,6 +27,11 @@ class SupervisorAgent(BaseAgent):
                 self.settings.max_iterations,
             )
             next_route = "done"
+            # Ghi cờ lỗi tường minh: benchmark phải đếm đây là một lần chạy THẤT BẠI,
+            # thay vì suy đoán qua độ dài `final_answer` (thông báo lỗi cũng dài > 50 ký tự).
+            state.errors.append(
+                f"guardrail_stop: đạt max_iterations={self.settings.max_iterations}"
+            )
             if not state.final_answer:
                 state.final_answer = (
                     "Quá trình nghiên cứu dừng lại do đạt giới hạn số lượt điều phối tối đa."

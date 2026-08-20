@@ -1,5 +1,6 @@
 """Command-line entrypoint for the lab starter."""
 
+import os
 from time import perf_counter
 from typing import Annotated
 
@@ -13,7 +14,10 @@ from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.core.errors import StudentTodoError
 from multi_agent_research_lab.core.schemas import ResearchQuery
 from multi_agent_research_lab.core.state import ResearchState
-from multi_agent_research_lab.evaluation.benchmark import run_benchmark
+from multi_agent_research_lab.evaluation.benchmark import (
+    load_benchmark_queries,
+    run_benchmark_suite,
+)
 from multi_agent_research_lab.evaluation.report import render_markdown_report, save_markdown_report
 from multi_agent_research_lab.graph.workflow import MultiAgentWorkflow
 from multi_agent_research_lab.observability.logging import configure_logging
@@ -27,6 +31,22 @@ console = Console()
 def _init() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
+    _enable_langsmith_tracing()
+
+
+def _enable_langsmith_tracing() -> None:
+    """Bật auto-instrumentation của LangSmith trước khi LangGraph khởi chạy.
+
+    LangChain/LangGraph đọc cấu hình tracing từ biến môi trường, nên phải export từ
+    `Settings` (nguồn cấu hình duy nhất) ra `os.environ` — không hard-code key trong code.
+    """
+    settings = get_settings()
+    if not settings.langsmith_api_key:
+        return
+    os.environ.setdefault("LANGSMITH_TRACING", "true")
+    os.environ.setdefault("LANGSMITH_API_KEY", settings.langsmith_api_key)
+    os.environ.setdefault("LANGSMITH_PROJECT", settings.langsmith_project)
+    console.print(f"[dim]LangSmith tracing đang bật — project: {settings.langsmith_project}[/dim]")
 
 
 def _parse_query(query: str) -> ResearchQuery:
@@ -59,9 +79,7 @@ def run_single_agent_baseline(query: str) -> ResearchState:
     context_lines: list[str] = []
     for i, src in enumerate(sources, 1):
         context_lines.append(
-            f"[{i}] Tiêu đề: {src.title}\n"
-            f"    URL: {src.url or 'N/A'}\n"
-            f"    Nội dung: {src.snippet}"
+            f"[{i}] Tiêu đề: {src.title}\n    URL: {src.url or 'N/A'}\n    Nội dung: {src.snippet}"
         )
     context_str = "\n\n".join(context_lines)
 
@@ -113,9 +131,7 @@ def baseline(
 ) -> None:
     """Run a real single-agent baseline pipeline and display metrics."""
     _init()
-    console.print(
-        Panel(f"Đang thực thi Single-Agent Baseline: '{query}'...", style="cyan")
-    )
+    console.print(Panel(f"Đang thực thi Single-Agent Baseline: '{query}'...", style="cyan"))
 
     state = run_single_agent_baseline(query)
 
@@ -190,15 +206,9 @@ def multi_agent(
     )
 
     # Tính toán tổng hợp chi phí và tokens từ agent_results
-    total_in_tokens = sum(
-        int(r.metadata.get("input_tokens", 0)) for r in result.agent_results
-    )
-    total_out_tokens = sum(
-        int(r.metadata.get("output_tokens", 0)) for r in result.agent_results
-    )
-    total_cost = sum(
-        float(r.metadata.get("cost_usd", 0.0)) for r in result.agent_results
-    )
+    total_in_tokens = sum(int(r.metadata.get("input_tokens", 0)) for r in result.agent_results)
+    total_out_tokens = sum(int(r.metadata.get("output_tokens", 0)) for r in result.agent_results)
+    total_cost = sum(float(r.metadata.get("cost_usd", 0.0)) for r in result.agent_results)
 
     # In bảng hiệu năng Multi-Agent
     table = Table(
@@ -223,27 +233,41 @@ def multi_agent(
 @app.command("benchmark")
 def benchmark(
     query: Annotated[
-        str,
-        typer.Option("--query", "-q", help="Research query to benchmark"),
-    ] = "So sánh single-agent vs multi-agent trong bài toán nghiên cứu",
+        str | None,
+        typer.Option(
+            "--query",
+            "-q",
+            help="Chỉ benchmark một truy vấn. Bỏ trống để chạy cả bộ trong configs/.",
+        ),
+    ] = None,
     output: Annotated[
         str,
         typer.Option("--output", "-o", help="Output markdown report path"),
     ] = "reports/benchmark_report.md",
 ) -> None:
-    """Run head-to-head benchmark between Single-Agent Baseline and Multi-Agent Workflow."""
+    """Run head-to-head benchmark between Single-Agent Baseline and Multi-Agent Workflow.
+
+    Mặc định chạy toàn bộ `benchmark.queries` trong `configs/lab_default.yaml` rồi lấy trung
+    bình: LLM sinh văn bản ngẫu nhiên nên số liệu của một truy vấn đơn lẻ dao động mạnh.
+    """
     _init()
+
+    queries = [query] if query else load_benchmark_queries()
     console.print(
-        Panel(f"Bắt đầu Benchmark Đối Chứng cho query:\n'{query}'", style="bold yellow")
+        Panel(
+            f"Bắt đầu Benchmark Đối Chứng trên {len(queries)} truy vấn:\n"
+            + "\n".join(f"  {i}. {q}" for i, q in enumerate(queries, 1)),
+            style="bold yellow",
+        )
     )
 
     # 1. Chạy Single-Agent Baseline
     console.print("[dim]Đang chạy Single-Agent Baseline...[/dim]")
-    _, baseline_m = run_benchmark("Single-Agent Baseline", query, run_single_agent_baseline)
+    baseline_m = run_benchmark_suite("Single-Agent Baseline", run_single_agent_baseline, queries)
 
     # 2. Chạy Multi-Agent System
     console.print("[dim]Đang chạy Multi-Agent System...[/dim]")
-    _, multi_m = run_benchmark("Multi-Agent System", query, run_multi_agent_system)
+    multi_m = run_benchmark_suite("Multi-Agent System", run_multi_agent_system, queries)
 
     # 3. Xuất báo cáo Markdown
     report_md = render_markdown_report([baseline_m, multi_m])

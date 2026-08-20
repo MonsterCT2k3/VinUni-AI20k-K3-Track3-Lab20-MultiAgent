@@ -57,3 +57,5 @@ def test_supervisor_enforces_max_iterations_guardrail() -> None:
     updated = supervisor.run(state)
     assert updated.route_history[-1] == "done"
     assert updated.final_answer is not None
+    # Guardrail phải ghi cờ lỗi tường minh để benchmark đếm được đây là một lần chạy hỏng.
+    assert any("guardrail_stop" in err for err in updated.errors)

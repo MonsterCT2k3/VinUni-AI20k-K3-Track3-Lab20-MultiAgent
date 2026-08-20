@@ -60,7 +60,20 @@ class WriterAgent(BaseAgent):
         )
 
         # 3. Gọi LLM sinh bài báo cáo cuối cùng
-        resp = self.llm_client.complete(system_prompt, user_prompt)
+        try:
+            resp = self.llm_client.complete(system_prompt, user_prompt)
+        except Exception as exc:
+            # Writer BẮT BUỘC phải đặt `final_answer`, nếu không Supervisor sẽ route lại
+            # writer mãi cho tới khi chạm `max_iterations`. Ghép nội dung tốt nhất đang có.
+            logger.error("WriterAgent: gọi LLM thất bại: %s", exc)
+            state.errors.append(f"writer.llm: {exc}")
+            state.final_answer = (
+                "Không tạo được báo cáo do lỗi LLM. Tổng hợp tạm thời từ dữ liệu đã thu thập:"
+                f"\n\n{analysis_content}\n\n"
+                f"### Tài Liệu Tham Khảo (References)\n{sources_text or 'Không có nguồn.'}"
+            )
+            return state
+
         state.final_answer = resp.content
 
         # 4. Ghi nhận AgentResult và Trace Event

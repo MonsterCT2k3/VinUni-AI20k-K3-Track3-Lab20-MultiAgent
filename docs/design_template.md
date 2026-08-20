@@ -15,7 +15,7 @@ Xây dựng hệ thống nghiên cứu sâu tự động (**Autonomous Deep Rese
 
 - **Cognitive Overload (Quá tải nhận thức):** Single-Agent phải gánh vác cùng lúc việc tìm kiếm, đọc hiểu, phân tích mâu thuẫn và hành văn trong 1 prompt duy nhất, dẫn đến câu trả lời hời hợt và dễ bỏ sót thông tin.
 - **Cascading Hallucinations:** Thiếu cơ chế kiểm chứng chéo độc lập khiến thông tin sai lệch từ một nguồn dễ bị khuếch đại thành kết luận sai.
-- **Separation of Concerns:** Multi-Agent phân tách rõ ràng trách nhiệm: Researcher (Thu thập), Analyst (Phản biện & Trade-offs), Writer (Tổng hợp & Trích dẫn) và Supervisor (Điều phối tập trung).
+- **Separation of Concerns:** Multi-Agent phân tách rõ ràng trách nhiệm: Researcher (Thu thập), Analyst (Phản biện & Trade-offs), Writer (Tổng hợp & Trích dẫn), Critic (Thẩm định trích dẫn) và Supervisor (Điều phối tập trung).
 
 ## 3. Agent Roles & Failure Modes
 
@@ -25,6 +25,7 @@ Xây dựng hệ thống nghiên cứu sâu tự động (**Autonomous Deep Rese
 | **Researcher** | Tối ưu truy vấn, tìm kiếm trên Corpus/Web, lọc tài liệu chất lượng | `request.query` | `sources`, `research_notes` | Không tìm thấy tài liệu ➔ Tự động fallback sang kho 30 topics hoặc mock data. |
 | **Analyst** | Kiểm chứng chéo, phát hiện mâu thuẫn giữa các nguồn, rút trích trade-offs | `research_notes` | `analysis_notes` | Bỏ sót mâu thuẫn ➔ Prompt ép buộc so sánh 2 chiều và đúc kết trade-offs. |
 | **Writer** | Soạn thảo báo cáo Markdown chuẩn, gán trích dẫn `[1]`, `[2]` | `analysis_notes`, `sources` | `final_answer` | Bịa trích dẫn (Hallucinated citations) ➔ Thuật toán kiểm tra regex index nguồn hợp lệ. |
+| **Critic** | Thẩm định xác định (deterministic, **không gọi LLM**): chặn trích dẫn ảo, bài rỗng/quá ngắn | `final_answer`, `sources` | `state.errors`, `agent_results` | Bỏ lọt lỗi ➔ Ghi phát hiện vào `state.errors` để tự động phản ánh vào `failure_rate` và điểm phạt quality. |
 
 ## 4. Shared State Schema (ResearchState)
 
