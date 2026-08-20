@@ -1,5 +1,12 @@
 # Multi-Agent Research System Design Document
 
+### 🎓 Thông Tin Học Viên
+- **Họ và tên:** Nguyễn Đăng Nam
+- **Mã học viên:** 2A202601307
+- **Khóa học:** VinUni AI20k - Khóa 3 Track 3 (Multi-Agent Systems)
+
+---
+
 ## 1. Problem (Vấn Đề Kỹ Thuật)
 
 Xây dựng hệ thống nghiên cứu sâu tự động (**Autonomous Deep Research System**) có khả năng tiếp nhận câu hỏi mở đa chiều từ người dùng, tự động truy xuất tài liệu từ kho tri thức/Web, phân tích phản biện và tổng hợp báo cáo chuyên sâu có trích dẫn nguồn chuẩn học thuật.

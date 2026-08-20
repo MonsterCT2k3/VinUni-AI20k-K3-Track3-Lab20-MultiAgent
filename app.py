@@ -101,6 +101,13 @@ st.markdown(
 settings = get_settings()
 
 # Sidebar
+st.sidebar.markdown("### 🎓 Thông Tin Học Viên")
+st.sidebar.success(
+    "**Họ và tên:** Nguyễn Đăng Nam\n\n"
+    "**Mã học viên:** `2A202601307`\n\n"
+    "**Khóa:** VinUni AI20k - K3 Track 3"
+)
+st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚙️ Cấu Hình Tìm Kiếm & LLM")
 
 search_mode = st.sidebar.radio(

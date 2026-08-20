@@ -1,5 +1,12 @@
 # Lab 20: Multi-Agent Research System Starter
 
+### 🎓 Thông Tin Học Viên
+- **Họ và tên:** Nguyễn Đăng Nam
+- **Mã học viên:** 2A202601307
+- **Khóa học:** VinUni AI20k - Khóa 3 Track 3 (Multi-Agent Systems)
+
+---
+
 Starter repo cho bài lab **Multi-Agent Systems**: xây dựng hệ thống nghiên cứu gồm **Supervisor + Researcher + Analyst + Writer** và benchmark với single-agent baseline.
 
 > Mục tiêu của repo này là cung cấp **production-grade skeleton** để học viên phát triển code cá nhân. Các phần logic quan trọng được để ở dạng `TODO` để học viên tự triển khai.

@@ -1,5 +1,10 @@
 # 📊 Báo Cáo Benchmark Đối Chứng (Benchmark Report): Single-Agent vs Multi-Agent
 
+### 🎓 Thông Tin Học Viên
+- **Họ và tên:** Nguyễn Đăng Nam
+- **Mã học viên:** 2A202601307
+- **Khóa học:** VinUni AI20k - Khóa 3 Track 3 (Multi-Agent Systems)
+
 > 🔬 **Mục tiêu:** Đánh giá định lượng hiệu năng giữa hệ thống Đơn tác nhân (Monolithic Single-Agent) và Đa tác nhân (Supervisor + Worker Agents).
 
 ## 1. Bảng Số Liệu Đo Lường Thực Nghiệm
