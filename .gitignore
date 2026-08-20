@@ -10,4 +10,7 @@ build/
 *.egg-info/
 reports/*.json
 reports/*.md
+!reports/benchmark_report.md
 !.gitkeep
+docs-for-dev/
+*.zip
